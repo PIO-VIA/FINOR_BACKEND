@@ -56,10 +56,16 @@ async def declare_investment(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Investor name is required for the first investment.",
             )
-        is_new_investor = True
-        existing_codes = await crud.user.get_all_access_codes(db)
-        new_code = generate_investor_code(existing_codes)
-        investor = await crud.user.create_investor(db, body.investor_name, new_code)
+        
+        # Check if an investor with this name already exists
+        investor = await crud.user.get_user_by_name(db, body.investor_name)
+        if investor:
+            is_new_investor = False
+        else:
+            is_new_investor = True
+            existing_codes = await crud.user.get_all_access_codes(db)
+            new_code = generate_investor_code(existing_codes)
+            investor = await crud.user.create_investor(db, body.investor_name, new_code)
 
     investment = await crud.investment.create_investment(
         db,

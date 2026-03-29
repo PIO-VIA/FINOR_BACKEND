@@ -17,6 +17,13 @@ async def get_user_by_access_code(db: AsyncSession, access_code: str) -> User | 
     return result.scalar_one_or_none()
 
 
+async def get_user_by_name(db: AsyncSession, name: str) -> User | None:
+    result = await db.execute(
+        select(User).where(User.name == name, User.role == RoleEnum.INVESTOR)
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_treasurer_by_email(db: AsyncSession, email: str) -> User | None:
     result = await db.execute(
         select(User).where(User.access_code == email, User.role == RoleEnum.TREASURER)
