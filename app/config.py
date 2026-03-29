@@ -14,7 +14,7 @@ class Settings(BaseSettings):
             return v.replace("postgresql://", "postgresql+asyncpg://", 1)
         return v
 
-    secret_key: str
+    secret_key: str = "temporary_secret_key_for_build"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
 
