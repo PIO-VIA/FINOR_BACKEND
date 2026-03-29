@@ -1,0 +1,34 @@
+services:
+  # FastAPI Web Service
+  - type: web
+    name: finor-backend
+    env: docker
+    region: frankfurt # You can change this to your preferred region
+    plan: free # Free tier or higher
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: finor-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+      - key: FIRST_TREASURER_NAME
+        sync: false
+      - key: FIRST_TREASURER_EMAIL
+        sync: false
+      - key: FIRST_TREASURER_PASSWORD
+        sync: false
+
+# PostgreSQL Database Service
+databases:
+  - name: finor-db
+    databaseName: finor
+    user: finor_user
+    plan: free
