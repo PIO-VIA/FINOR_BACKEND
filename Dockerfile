@@ -24,5 +24,5 @@ COPY . /app/
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Start command (migrations + app)
-CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Start command (migrations + seed + app)
+CMD alembic upgrade head && python seed.py && uvicorn app.main:app --host 0.0.0.0 --port 8000
