@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.dependencies import get_current_treasurer, get_db
 from app.models.investment import InvestmentStatusEnum
-from app.models.user import User
+from app.models.user import RoleEnum, User
 from app.schemas.investment import (
     InvestmentCreate,
     InvestmentCreateResponse,
@@ -42,13 +42,20 @@ async def declare_investment(
 
     is_new_investor = False
     if body.access_code:
+        # Returning investor: find by access_code
         investor = await crud.user.get_user_by_access_code(db, body.access_code)
-        if investor is None:
+        if investor is None or investor.role != RoleEnum.INVESTOR:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Personal code not found.",
+                detail="Investor code not found.",
             )
     else:
+        # First-time investor: name is mandatory
+        if not body.investor_name:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Investor name is required for the first investment.",
+            )
         is_new_investor = True
         existing_codes = await crud.user.get_all_access_codes(db)
         new_code = generate_investor_code(existing_codes)
@@ -63,8 +70,14 @@ async def declare_investment(
     )
     await db.commit()
 
+    message = (
+        "First investment declared. Welcome! Please keep your access code."
+        if is_new_investor
+        else "Investment declared successfully."
+    )
+
     return GenericResponse(
-        message="Investment declared successfully",
+        message=message,
         data=InvestmentCreateResponse(
             investment=InvestmentRead.model_validate(investment),
             access_code=investor.access_code,

@@ -3,16 +3,28 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
-from app.dependencies import get_current_investor, get_db
+from app.dependencies import get_current_investor, get_current_treasurer, get_db
 from app.models.expense import Expense
 from app.models.investment import Investment, InvestmentStatusEnum
 from app.models.user import User
 from app.schemas.investment import InvestmentRead
+from app.schemas.user import UserRead, UserUpdate
 from app.schemas.stats import InvestorImpactItem
-
 from app.schemas.response import GenericResponse
 
 router = APIRouter(prefix="/investors", tags=["Investors"])
+
+
+@router.get("/", response_model=GenericResponse[list[UserRead]])
+async def list_investors(
+    db: AsyncSession = Depends(get_db),
+    current_treasurer: User = Depends(get_current_treasurer),
+):
+    """Allow treasurer to see all investors with their codes."""
+    investors = await crud.user.get_investors(db)
+    return GenericResponse(
+        data=[UserRead.model_validate(i) for i in investors]
+    )
 
 
 @router.get("/me/history", response_model=GenericResponse[list[InvestmentRead]])
@@ -72,3 +84,23 @@ async def get_my_impact(
         )
 
     return GenericResponse(data=impact_items)
+
+
+@router.patch("/me", response_model=GenericResponse[UserRead])
+async def update_my_profile(
+    body: UserUpdate,
+    access_code: str = Query(..., description="Your personal INV-XXXX code"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Allow investor to update their personal info (except access_code)."""
+    investor: User = await get_current_investor(access_code, db)
+    
+    # We ignore email/password for investors as they don't have them
+    updated_user = await crud.user.update_user(
+        db, investor, name=body.name, phone=body.phone
+    )
+    await db.commit()
+    return GenericResponse(
+        message="Profile updated successfully",
+        data=UserRead.model_validate(updated_user)
+    )

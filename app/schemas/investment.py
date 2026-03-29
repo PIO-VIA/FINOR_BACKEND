@@ -6,7 +6,7 @@ from app.models.investment import InvestmentStatusEnum
 
 
 class InvestmentCreate(BaseModel):
-    investor_name: str
+    investor_name: str | None = None
     rubric_id: str
     amount: float
     bank_receipt_code: str

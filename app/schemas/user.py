@@ -10,6 +10,7 @@ class UserRead(BaseModel):
 
     id: str
     name: str
+    phone: str | None = None
     role: RoleEnum
     access_code: str | None
     created_at: datetime
@@ -18,6 +19,7 @@ class UserRead(BaseModel):
 class InvestorCreate(BaseModel):
     """Used when an investor declares an investment for the first time."""
     name: str
+    phone: str | None = None
 
 
 class TreasurerCreate(BaseModel):
@@ -31,3 +33,4 @@ class UserUpdate(BaseModel):
     name: str | None = None
     email: str | None = None
     password: str | None = None
+    phone: str | None = None
