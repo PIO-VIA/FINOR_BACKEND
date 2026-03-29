@@ -6,10 +6,12 @@ from app.dependencies import get_current_treasurer, get_db
 from app.models.user import User
 from app.schemas.transfer import TransferCreate, TransferRead
 
+from app.schemas.response import GenericResponse
+
 router = APIRouter(prefix="/transfers", tags=["Transfers"])
 
 
-@router.post("/", response_model=TransferRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=GenericResponse[TransferRead], status_code=status.HTTP_201_CREATED)
 async def create_transfer(
     body: TransferCreate,
     db: AsyncSession = Depends(get_db),
@@ -40,19 +42,24 @@ async def create_transfer(
         date=body.date,
     )
     await db.commit()
-    return TransferRead.model_validate(transfer)
+    return GenericResponse(
+        message="Transfer created successfully",
+        data=TransferRead.model_validate(transfer)
+    )
 
 
-@router.get("/", response_model=list[TransferRead])
+@router.get("/", response_model=GenericResponse[list[TransferRead]])
 async def list_transfers(
     db: AsyncSession = Depends(get_db),
     current_treasurer: User = Depends(get_current_treasurer),
 ):
     transfers = await crud.transfer.get_all_transfers(db)
-    return [TransferRead.model_validate(t) for t in transfers]
+    return GenericResponse(
+        data=[TransferRead.model_validate(t) for t in transfers]
+    )
 
 
-@router.get("/{transfer_id}", response_model=TransferRead)
+@router.get("/{transfer_id}", response_model=GenericResponse[TransferRead])
 async def get_transfer(
     transfer_id: str,
     db: AsyncSession = Depends(get_db),
@@ -63,10 +70,12 @@ async def get_transfer(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found."
         )
-    return TransferRead.model_validate(transfer)
+    return GenericResponse(
+        data=TransferRead.model_validate(transfer)
+    )
 
 
-@router.patch("/{transfer_id}/repaid", response_model=TransferRead)
+@router.patch("/{transfer_id}/repaid", response_model=GenericResponse[TransferRead])
 async def mark_transfer_repaid(
     transfer_id: str,
     db: AsyncSession = Depends(get_db),
@@ -84,4 +93,7 @@ async def mark_transfer_repaid(
         )
     transfer = await crud.transfer.mark_transfer_repaid(db, transfer)
     await db.commit()
-    return TransferRead.model_validate(transfer)
+    return GenericResponse(
+        message="Transfer marked as repaid",
+        data=TransferRead.model_validate(transfer)
+    )

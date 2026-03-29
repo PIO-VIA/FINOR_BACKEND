@@ -10,20 +10,24 @@ from app.models.user import User
 from app.schemas.investment import InvestmentRead
 from app.schemas.stats import InvestorImpactItem
 
+from app.schemas.response import GenericResponse
+
 router = APIRouter(prefix="/investors", tags=["Investors"])
 
 
-@router.get("/me/history", response_model=list[InvestmentRead])
+@router.get("/me/history", response_model=GenericResponse[list[InvestmentRead]])
 async def get_my_history(
     access_code: str = Query(..., description="Your personal INV-XXXX code"),
     db: AsyncSession = Depends(get_db),
 ):
     investor: User = await get_current_investor(access_code, db)
     investments = await crud.investment.get_investments_by_investor(db, investor.id)
-    return [InvestmentRead.model_validate(i) for i in investments]
+    return GenericResponse(
+        data=[InvestmentRead.model_validate(i) for i in investments]
+    )
 
 
-@router.get("/me/impact", response_model=list[InvestorImpactItem])
+@router.get("/me/impact", response_model=GenericResponse[list[InvestorImpactItem]])
 async def get_my_impact(
     access_code: str = Query(..., description="Your personal INV-XXXX code"),
     db: AsyncSession = Depends(get_db),
@@ -67,4 +71,4 @@ async def get_my_impact(
             )
         )
 
-    return impact_items
+    return GenericResponse(data=impact_items)

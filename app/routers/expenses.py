@@ -6,10 +6,12 @@ from app.dependencies import get_current_treasurer, get_db
 from app.models.user import User
 from app.schemas.expense import ExpenseCreate, ExpenseRead
 
+from app.schemas.response import GenericResponse
+
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
 
-@router.post("/", response_model=ExpenseRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=GenericResponse[ExpenseRead], status_code=status.HTTP_201_CREATED)
 async def create_expense(
     body: ExpenseCreate,
     db: AsyncSession = Depends(get_db),
@@ -30,20 +32,25 @@ async def create_expense(
         treasurer_id=current_treasurer.id,
     )
     await db.commit()
-    return ExpenseRead.model_validate(expense)
+    return GenericResponse(
+        message="Expense recorded successfully",
+        data=ExpenseRead.model_validate(expense)
+    )
 
 
-@router.get("/", response_model=list[ExpenseRead])
+@router.get("/", response_model=GenericResponse[list[ExpenseRead]])
 async def list_expenses(
     rubric_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_treasurer: User = Depends(get_current_treasurer),
 ):
     expenses = await crud.expense.get_all_expenses(db, rubric_id=rubric_id)
-    return [ExpenseRead.model_validate(e) for e in expenses]
+    return GenericResponse(
+        data=[ExpenseRead.model_validate(e) for e in expenses]
+    )
 
 
-@router.get("/{expense_id}", response_model=ExpenseRead)
+@router.get("/{expense_id}", response_model=GenericResponse[ExpenseRead])
 async def get_expense(
     expense_id: str,
     db: AsyncSession = Depends(get_db),
@@ -54,4 +61,6 @@ async def get_expense(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found."
         )
-    return ExpenseRead.model_validate(expense)
+    return GenericResponse(
+        data=ExpenseRead.model_validate(expense)
+    )

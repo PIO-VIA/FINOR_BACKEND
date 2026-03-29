@@ -13,11 +13,13 @@ from app.schemas.investment import (
 )
 from app.security import generate_investor_code
 
+from app.schemas.response import GenericResponse
+
 router = APIRouter(prefix="/investments", tags=["Investments"])
 
 
 @router.post(
-    "/", response_model=InvestmentCreateResponse, status_code=status.HTTP_201_CREATED
+    "/", response_model=GenericResponse[InvestmentCreateResponse], status_code=status.HTTP_201_CREATED
 )
 async def declare_investment(
     body: InvestmentCreate,
@@ -61,24 +63,29 @@ async def declare_investment(
     )
     await db.commit()
 
-    return InvestmentCreateResponse(
-        investment=InvestmentRead.model_validate(investment),
-        access_code=investor.access_code,
-        is_new_investor=is_new_investor,
+    return GenericResponse(
+        message="Investment declared successfully",
+        data=InvestmentCreateResponse(
+            investment=InvestmentRead.model_validate(investment),
+            access_code=investor.access_code,
+            is_new_investor=is_new_investor,
+        )
     )
 
 
-@router.get("/", response_model=list[InvestmentRead])
+@router.get("/", response_model=GenericResponse[list[InvestmentRead]])
 async def list_investments(
     status_filter: InvestmentStatusEnum | None = Query(None, alias="status"),
     db: AsyncSession = Depends(get_db),
     current_treasurer: User = Depends(get_current_treasurer),
 ):
     investments = await crud.investment.get_all_investments(db, status=status_filter)
-    return [InvestmentRead.model_validate(i) for i in investments]
+    return GenericResponse(
+        data=[InvestmentRead.model_validate(i) for i in investments]
+    )
 
 
-@router.get("/{investment_id}", response_model=InvestmentRead)
+@router.get("/{investment_id}", response_model=GenericResponse[InvestmentRead])
 async def get_investment(
     investment_id: str,
     db: AsyncSession = Depends(get_db),
@@ -89,10 +96,12 @@ async def get_investment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Investment not found."
         )
-    return InvestmentRead.model_validate(investment)
+    return GenericResponse(
+        data=InvestmentRead.model_validate(investment)
+    )
 
 
-@router.patch("/{investment_id}/validate", response_model=InvestmentRead)
+@router.patch("/{investment_id}/validate", response_model=GenericResponse[InvestmentRead])
 async def validate_investment(
     investment_id: str,
     db: AsyncSession = Depends(get_db),
@@ -110,10 +119,13 @@ async def validate_investment(
         )
     investment = await crud.investment.validate_investment(db, investment)
     await db.commit()
-    return InvestmentRead.model_validate(investment)
+    return GenericResponse(
+        message="Investment validated successfully",
+        data=InvestmentRead.model_validate(investment)
+    )
 
 
-@router.patch("/{investment_id}/reject", response_model=InvestmentRead)
+@router.patch("/{investment_id}/reject", response_model=GenericResponse[InvestmentRead])
 async def reject_investment(
     investment_id: str,
     body: InvestmentReject,
@@ -134,4 +146,7 @@ async def reject_investment(
         db, investment, body.rejection_reason
     )
     await db.commit()
-    return InvestmentRead.model_validate(investment)
+    return GenericResponse(
+        message="Investment rejected",
+        data=InvestmentRead.model_validate(investment)
+    )

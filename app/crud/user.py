@@ -57,3 +57,22 @@ async def create_treasurer(
 async def get_investors(db: AsyncSession) -> list[User]:
     result = await db.execute(select(User).where(User.role == RoleEnum.INVESTOR))
     return list(result.scalars().all())
+
+
+async def update_user(
+    db: AsyncSession,
+    user: User,
+    name: str | None = None,
+    email: str | None = None,
+    password: str | None = None,
+) -> User:
+    if name is not None:
+        user.name = name
+    if email is not None:
+        user.access_code = email
+    if password is not None:
+        user.password_hash = hash_password(password)
+
+    await db.flush()
+    await db.refresh(user)
+    return user

@@ -6,10 +6,12 @@ from app.dependencies import get_current_treasurer, get_db
 from app.models.user import User
 from app.schemas.rubric import RubricBalance, RubricCreate, RubricRead, RubricUpdate
 
+from app.schemas.response import GenericResponse
+
 router = APIRouter(prefix="/rubrics", tags=["Rubrics"])
 
 
-@router.post("/", response_model=RubricRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=GenericResponse[RubricRead], status_code=status.HTTP_201_CREATED)
 async def create_rubric(
     body: RubricCreate,
     db: AsyncSession = Depends(get_db),
@@ -25,26 +27,33 @@ async def create_rubric(
         db, body.name, body.description, body.initial_balance
     )
     await db.commit()
-    return RubricRead.model_validate(rubric)
+    return GenericResponse(
+        message="Rubric created successfully",
+        data=RubricRead.model_validate(rubric)
+    )
 
 
-@router.get("/", response_model=list[RubricRead])
+@router.get("/", response_model=GenericResponse[list[RubricRead]])
 async def list_rubrics(db: AsyncSession = Depends(get_db)):
     rubrics = await crud.rubric.get_all_rubrics(db)
-    return [RubricRead.model_validate(r) for r in rubrics]
+    return GenericResponse(
+        data=[RubricRead.model_validate(r) for r in rubrics]
+    )
 
 
-@router.get("/{rubric_id}", response_model=RubricRead)
+@router.get("/{rubric_id}", response_model=GenericResponse[RubricRead])
 async def get_rubric(rubric_id: str, db: AsyncSession = Depends(get_db)):
     rubric = await crud.rubric.get_rubric_by_id(db, rubric_id)
     if rubric is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Rubric not found."
         )
-    return RubricRead.model_validate(rubric)
+    return GenericResponse(
+        data=RubricRead.model_validate(rubric)
+    )
 
 
-@router.patch("/{rubric_id}", response_model=RubricRead)
+@router.patch("/{rubric_id}", response_model=GenericResponse[RubricRead])
 async def update_rubric(
     rubric_id: str,
     body: RubricUpdate,
@@ -58,10 +67,13 @@ async def update_rubric(
         )
     rubric = await crud.rubric.update_rubric(db, rubric, body.name, body.description)
     await db.commit()
-    return RubricRead.model_validate(rubric)
+    return GenericResponse(
+        message="Rubric updated successfully",
+        data=RubricRead.model_validate(rubric)
+    )
 
 
-@router.get("/{rubric_id}/balance", response_model=RubricBalance)
+@router.get("/{rubric_id}/balance", response_model=GenericResponse[RubricBalance])
 async def get_rubric_balance(rubric_id: str, db: AsyncSession = Depends(get_db)):
     rubric = await crud.rubric.get_rubric_by_id(db, rubric_id)
     if rubric is None:
@@ -75,19 +87,21 @@ async def get_rubric_balance(rubric_id: str, db: AsyncSession = Depends(get_db))
     current_balance = (
         float(rubric.initial_balance) + total_invested - total_expenses - total_out + total_in
     )
-    return RubricBalance(
-        rubric_id=rubric.id,
-        rubric_name=rubric.name,
-        initial_balance=float(rubric.initial_balance),
-        total_invested=total_invested,
-        total_expenses=total_expenses,
-        total_transferred_out=total_out,
-        total_transferred_in=total_in,
-        current_balance=current_balance,
+    return GenericResponse(
+        data=RubricBalance(
+            rubric_id=rubric.id,
+            rubric_name=rubric.name,
+            initial_balance=float(rubric.initial_balance),
+            total_invested=total_invested,
+            total_expenses=total_expenses,
+            total_transferred_out=total_out,
+            total_transferred_in=total_in,
+            current_balance=current_balance,
+        )
     )
 
 
-@router.delete("/{rubric_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{rubric_id}", response_model=GenericResponse)
 async def delete_rubric(
     rubric_id: str,
     db: AsyncSession = Depends(get_db),
@@ -100,3 +114,4 @@ async def delete_rubric(
         )
     await crud.rubric.delete_rubric(db, rubric)
     await db.commit()
+    return GenericResponse(message="Rubric deleted successfully")
